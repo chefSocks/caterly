@@ -10,7 +10,7 @@ import {
   Select,
   Textarea,
 } from "@/components/ui";
-import { money, titleCase } from "@/lib/format";
+import { money, plural, titleCase } from "@/lib/format";
 import { num } from "@/lib/event-summary";
 import { MenuCategory } from "@/generated/prisma/enums";
 import {
@@ -47,7 +47,7 @@ export default async function MenuItemPage({
     <>
       <PageHeader
         title={item.name}
-        subtitle={`${titleCase(item.category)} · ${money(num(item.price))} ${item.unit} · used on ${item._count.eventItems} events`}
+        subtitle={`${titleCase(item.category)} · ${money(num(item.price))} ${item.unit} · used on ${plural(item._count.eventItems, "event")}`}
         action={
           <form action={deleteMenuItem.bind(null, item.id)}>
             <Button variant="danger" type="submit">

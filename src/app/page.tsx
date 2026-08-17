@@ -9,7 +9,14 @@ import {
   Input,
   PageHeader,
 } from "@/components/ui";
-import { formatDate, formatDateTime, formatTime, money, titleCase } from "@/lib/format";
+import {
+  formatDate,
+  formatDateTime,
+  formatTime,
+  money,
+  plural,
+  titleCase,
+} from "@/lib/format";
 import { summarize } from "@/lib/event-summary";
 import { statusTone } from "@/lib/status";
 import { addTask, toggleTask } from "./events/actions";
@@ -85,14 +92,14 @@ export default async function DashboardPage() {
         <Kpi
           label="Booked this month"
           value={money(monthBooked)}
-          hint={`${monthEvents.length} events · ${monthGuests} guests`}
+          hint={`${plural(monthEvents.length, "event")} · ${monthGuests} guests`}
         />
         <Kpi label="Events next 30 days" value={String(upcoming.length)} />
         <Kpi label="Open leads" value={String(openLeads)} hint="Needing follow-up" />
         <Kpi
           label="Outstanding balance"
           value={money(outstandingTotal)}
-          hint={`${outstanding.length} events with a balance`}
+          hint={`${plural(outstanding.length, "event")} with a balance`}
         />
       </div>
 

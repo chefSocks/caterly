@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { Button, Card, EmptyState, PageHeader } from "@/components/ui";
-import { formatDate, money, titleCase } from "@/lib/format";
+import { formatDate, money, plural, titleCase } from "@/lib/format";
 import { summarize } from "@/lib/event-summary";
 import { ClientForm } from "../ClientForm";
 import { deleteClient, updateClient } from "../actions";
@@ -35,7 +35,7 @@ export default async function ClientPage({
     <>
       <PageHeader
         title={client.name}
-        subtitle={`${client.events.length} events · ${money(lifetime)} lifetime value`}
+        subtitle={`${plural(client.events.length, "event")} · ${money(lifetime)} lifetime value`}
         action={
           <div className="flex gap-2">
             <Link href={`/events/new?clientId=${client.id}`}>

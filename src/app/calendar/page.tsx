@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
-import { formatTime, money, titleCase } from "@/lib/format";
+import { formatTime, money, plural, titleCase } from "@/lib/format";
 import { summarize } from "@/lib/event-summary";
 import { statusTone } from "@/lib/status";
 
@@ -71,7 +71,7 @@ export default async function CalendarPage({
     <>
       <PageHeader
         title="Calendar"
-        subtitle={`${events.length} events · ${money(booked)} booked in ${monthLabel}`}
+        subtitle={`${plural(events.length, "event")} · ${money(booked)} booked in ${monthLabel}`}
         action={
           <div className="flex gap-2">
             <Link href={`/calendar?month=${shiftMonth(safeYear, safeMonth, -1)}`}>

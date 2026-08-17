@@ -43,6 +43,10 @@ export function toDateInput(value: Date | string | null | undefined): string {
   return new Date(value).toISOString().slice(0, 10);
 }
 
+export function plural(count: number, noun: string, suffix = "s"): string {
+  return `${count} ${noun}${count === 1 ? "" : suffix}`;
+}
+
 export function titleCase(value: string): string {
   return value
     .toLowerCase()

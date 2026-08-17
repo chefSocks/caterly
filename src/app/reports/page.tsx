@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { Button, Card, EmptyState, Input, PageHeader } from "@/components/ui";
-import { formatDate, money, titleCase } from "@/lib/format";
+import { formatDate, money, plural, titleCase } from "@/lib/format";
 import { num, summarize } from "@/lib/event-summary";
 import { lineTotal } from "@/lib/totals";
 
@@ -128,7 +128,7 @@ export default async function ReportsPage({
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {(
           [
-            ["Revenue booked", money(revenue), `${events.length} events`],
+            ["Revenue booked", money(revenue), plural(events.length, "event")],
             ["Collected", money(collected), `${money(revenue - collected)} outstanding`],
             [
               "Food + labour cost",
@@ -166,7 +166,7 @@ export default async function ReportsPage({
                     <span className="tabular-nums">
                       {money(value.revenue)}{" "}
                       <span className="text-xs text-slate-400">
-                        {value.events} events
+                        {plural(value.events, "event")}
                       </span>
                     </span>
                   </div>
@@ -226,7 +226,7 @@ export default async function ReportsPage({
                   <span className="tabular-nums">
                     {money(stats.revenue)}{" "}
                     <span className="text-xs text-slate-400">
-                      {stats.events} events
+                      {plural(stats.events, "event")}
                     </span>
                   </span>
                 </li>

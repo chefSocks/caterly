@@ -4,6 +4,7 @@ import { formatDate, money, titleCase } from "@/lib/format";
 import { num, summarize } from "@/lib/event-summary";
 import { lineTotal } from "@/lib/totals";
 import { InfoGrid, PrintSheet } from "@/components/PrintSheet";
+import { paymentMethodLabel } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +123,8 @@ export default async function InvoicePage({
             {event.payments.map((payment) => (
               <li key={payment.id} className="flex justify-between py-0.5">
                 <span>
-                  {formatDate(payment.receivedAt)} · {titleCase(payment.method)}
+                  {formatDate(payment.receivedAt)} ·{" "}
+                  {paymentMethodLabel[payment.method] ?? payment.method}
                   {payment.reference ? ` · ${payment.reference}` : ""}
                 </span>
                 <span className="tabular-nums">{money(num(payment.amount))}</span>

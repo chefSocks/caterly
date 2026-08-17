@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Select } from "@/components/ui";
-import { formatDate, formatTime, money, titleCase } from "@/lib/format";
+import { formatDate, formatTime, money, plural, titleCase } from "@/lib/format";
 import { summarize } from "@/lib/event-summary";
 import { EventStatus } from "@/generated/prisma/enums";
 import { statusTone } from "@/lib/status";
@@ -49,7 +49,7 @@ export default async function EventsPage({
     <>
       <PageHeader
         title="Events"
-        subtitle={`${events.length} events · ${money(booked)} booked`}
+        subtitle={`${plural(events.length, "event")} · ${money(booked)} booked`}
         action={
           <Link href="/events/new">
             <Button>New event</Button>

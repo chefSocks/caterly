@@ -9,7 +9,7 @@ import {
   PageHeader,
   Textarea,
 } from "@/components/ui";
-import { formatDate, formatTime } from "@/lib/format";
+import { formatDate, formatTime, plural } from "@/lib/format";
 import { num } from "@/lib/event-summary";
 import {
   createStaff,
@@ -132,7 +132,7 @@ export default async function StaffPage() {
                         {[
                           venue.address,
                           venue.capacity ? `cap ${venue.capacity}` : null,
-                          `${venue._count.events} events`,
+                          plural(venue._count.events, "event"),
                         ]
                           .filter(Boolean)
                           .join(" · ")}

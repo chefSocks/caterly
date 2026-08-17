@@ -22,7 +22,7 @@ import {
 } from "@/lib/format";
 import { num, summarize } from "@/lib/event-summary";
 import { lineTotal } from "@/lib/totals";
-import { statusTone } from "@/lib/status";
+import { paymentMethodLabel, statusTone } from "@/lib/status";
 import { EventStatus, ServiceType } from "@/generated/prisma/enums";
 import { AddMenuLine } from "./AddMenuLine";
 import {
@@ -419,7 +419,8 @@ export default async function EventPage({
                   <span>
                     {money(num(payment.amount))}{" "}
                     <span className="text-xs text-slate-400">
-                      {titleCase(payment.method)} · {formatDate(payment.receivedAt)}
+                      {paymentMethodLabel[payment.method] ?? payment.method} ·{" "}
+                      {formatDate(payment.receivedAt)}
                     </span>
                   </span>
                   <form action={deletePayment.bind(null, payment.id)}>
