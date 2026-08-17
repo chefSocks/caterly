@@ -1,103 +1,198 @@
-import Image from "next/image";
+import Link from "next/link";
+import { db } from "@/lib/db";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+} from "@/components/ui";
+import { formatDate, formatDateTime, formatTime, money, titleCase } from "@/lib/format";
+import { summarize } from "@/lib/event-summary";
+import { statusTone } from "@/lib/status";
+import { addTask, toggleTask } from "./events/actions";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-xs font-medium uppercase text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
     </div>
+  );
+}
+
+export default async function DashboardPage() {
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const [upcoming, monthEvents, openLeads, tasks, unpaid] = await Promise.all([
+    db.event.findMany({
+      where: { startAt: { gte: now, lte: in30Days }, status: { not: "CANCELLED" } },
+      orderBy: { startAt: "asc" },
+      include: { client: true, items: true, payments: true },
+      take: 12,
+    }),
+    db.event.findMany({
+      where: { startAt: { gte: monthStart, lt: monthEnd }, status: { not: "CANCELLED" } },
+      include: { items: true, payments: true },
+    }),
+    db.lead.count({ where: { status: { notIn: ["WON", "LOST"] } } }),
+    db.task.findMany({
+      where: { done: false },
+      orderBy: [{ dueAt: "asc" }],
+      include: { event: true },
+      take: 10,
+    }),
+    db.event.findMany({
+      where: { status: { in: ["DEFINITE", "COMPLETED"] } },
+      include: { client: true, items: true, payments: true },
+    }),
+  ]);
+
+  const monthBooked = monthEvents.reduce((sum, e) => sum + summarize(e).total, 0);
+  const monthGuests = monthEvents.reduce((sum, e) => sum + e.guestCount, 0);
+  const outstanding = unpaid
+    .map((event) => ({ event, totals: summarize(event) }))
+    .filter(({ totals }) => totals.balance > 0.01)
+    .sort((a, b) => b.totals.balance - a.totals.balance);
+  const outstandingTotal = outstanding.reduce((sum, row) => sum + row.totals.balance, 0);
+
+  return (
+    <>
+      <PageHeader
+        title="Dashboard"
+        subtitle={formatDate(now)}
+        action={
+          <div className="flex gap-2">
+            <Link href="/events/new">
+              <Button>New event</Button>
+            </Link>
+            <Link href="/calendar">
+              <Button variant="secondary">Calendar</Button>
+            </Link>
+          </div>
+        }
+      />
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi
+          label="Booked this month"
+          value={money(monthBooked)}
+          hint={`${monthEvents.length} events · ${monthGuests} guests`}
+        />
+        <Kpi label="Events next 30 days" value={String(upcoming.length)} />
+        <Kpi label="Open leads" value={String(openLeads)} hint="Needing follow-up" />
+        <Kpi
+          label="Outstanding balance"
+          value={money(outstandingTotal)}
+          hint={`${outstanding.length} events with a balance`}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Card
+          title="Upcoming events"
+          action={
+            <Link className="text-xs underline" href="/events">
+              All events
+            </Link>
+          }
+        >
+          {upcoming.length === 0 ? (
+            <EmptyState>Nothing booked in the next 30 days.</EmptyState>
+          ) : (
+            <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+              {upcoming.map((event) => {
+                const totals = summarize(event);
+                return (
+                  <li key={event.id} className="flex items-center justify-between gap-3 py-2">
+                    <div className="min-w-0">
+                      <Link
+                        className="font-medium hover:underline"
+                        href={`/events/${event.id}`}
+                      >
+                        {event.name}
+                      </Link>
+                      <p className="truncate text-xs text-slate-500">
+                        {event.client.name} · {formatDate(event.startAt)}{" "}
+                        {formatTime(event.startAt)} · {event.guestCount} guests
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <Badge tone={statusTone[event.status]}>
+                        {titleCase(event.status)}
+                      </Badge>
+                      <span className="tabular-nums">{money(totals.total)}</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        <div className="space-y-6">
+          <Card title="Open tasks">
+            <form
+              action={addTask.bind(null, null)}
+              className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end"
+            >
+              <Field label="Task">
+                <Input name="title" required placeholder="Call Nadia about tasting" />
+              </Field>
+              <Field label="Due">
+                <Input name="dueAt" type="datetime-local" />
+              </Field>
+              <Button type="submit">Add</Button>
+            </form>
+            {tasks.length === 0 ? (
+              <EmptyState>Nothing outstanding.</EmptyState>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {tasks.map((task) => (
+                  <li key={task.id}>
+                    <form action={toggleTask.bind(null, task.id)}>
+                      <button type="submit" className="text-left hover:underline">
+                        {task.title}
+                        <span className="block text-xs text-slate-400">
+                          {task.dueAt ? `due ${formatDateTime(task.dueAt)}` : "no due date"}
+                          {task.event ? ` · ${task.event.name}` : ""}
+                        </span>
+                      </button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card title="Balances owing">
+            {outstanding.length === 0 ? (
+              <EmptyState>Everything is paid up.</EmptyState>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {outstanding.slice(0, 8).map(({ event, totals }) => (
+                  <li key={event.id} className="flex justify-between gap-3">
+                    <Link className="truncate hover:underline" href={`/events/${event.id}`}>
+                      {event.client.name} · {event.name}
+                    </Link>
+                    <span className="shrink-0 tabular-nums text-amber-600">
+                      {money(totals.balance)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+      </div>
+    </>
   );
 }
