@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Caterly
 
-## Getting Started
+Catering & event management — a fast, modern replacement for Caterease.
 
-First, run the development server:
+Phase 1 covers the day-to-day workflow: leads → booked event → menu & pricing →
+BEO / kitchen sheet / invoice → payments, staffing and tasks.
+
+## Features
+
+- **Dashboard** — booked revenue this month, upcoming events, open tasks, balances owing.
+- **Leads pipeline** — new / contacted / proposal sent / won / lost, one-click convert to a booked event.
+- **Clients** — contact details, event history, lifetime value.
+- **Events** — 3-step booking wizard, list with search/status/date filters, month calendar, event copy.
+- **Menu library** — items with price, food cost, margin, recipe lines and equipment packing lines; per-guest packages.
+- **Event menu builder** — pull from the library or add custom lines, per-line quantity/price/taxable.
+- **Pricing** — service charge %, tax %, discount, live subtotal/total/balance.
+- **Money** — payments (cash/check/card/ACH), deposit schedules with due dates and paid flags.
+- **Staffing** — roster with hourly rates, per-event shifts, double-booking conflict detection.
+- **Prints** — BEO, kitchen production sheet (recipe + packing rollups), invoice. Print/PDF via the browser.
+- **Reports** — revenue booked/collected/outstanding, food & labour cost, revenue per guest, revenue by month, top items and clients.
+
+## Stack
+
+Next.js (App Router, server components + server actions), TypeScript, Tailwind CSS,
+PostgreSQL, Prisma.
+
+## Local setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Postgres
+sudo -u postgres psql -c "CREATE ROLE caterly LOGIN PASSWORD 'caterly';"
+sudo -u postgres psql -c "CREATE DATABASE caterly OWNER caterly;"
+
+# 2. Env
+cp .env.example .env   # then set the password you used above
+
+# 3. Install, migrate, seed
+npm install
+npm run db:migrate
+npm run db:seed
+
+# 4. Run
+npm run dev            # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script | Purpose |
+| --- | --- |
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run db:migrate` | Prisma migrate dev |
+| `npm run db:seed` | Sample clients, menu, events, leads, staff |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Not in phase 1
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Auth/users & permissions, Stripe payments, client portal, email sending,
+QuickBooks/Xero, Google/Outlook calendar sync, room diagrams, Caterease data import,
+company branding settings (see `COMPANY` in `src/components/PrintSheet.tsx`).
