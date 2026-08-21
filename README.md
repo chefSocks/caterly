@@ -1,61 +1,30 @@
-# Caterly
+# Caterly Next
 
-Catering & event management — a fast, modern replacement for Caterease.
+pull up the git for chefsocks/caterly look it over and tell me what you think needs work and build a list from most critical to least
 
-Phase 1 covers the day-to-day workflow: leads → booked event → menu & pricing →
-BEO / kitchen sheet / invoice → payments, staffing and tasks.
+my catering company currently uses caterease, it is horrible dated and slow. i need to create a new program that is more responsive, user friendly, quick and has all the features of caterease
 
-## Features
+Starting phase 1 in a new repo with Next.js + Postgres + Prisma. Will share the repo/PR once the first working slice (clients, events, calendar, menu builder, BEO print) is up.
 
-- **Dashboard** — booked revenue this month, upcoming events, open tasks, balances owing.
-- **Leads pipeline** — new / contacted / proposal sent / won / lost, one-click convert to a booked event.
-- **Clients** — contact details, event history, lifetime value.
-- **Events** — 3-step booking wizard, list with search/status/date filters, month calendar, event copy.
-- **Menu library** — items with price, food cost, margin, recipe lines and equipment packing lines; per-guest packages.
-- **Event menu builder** — pull from the library or add custom lines, per-line quantity/price/taxable.
-- **Pricing** — service charge %, tax %, discount, live subtotal/total/balance.
-- **Money** — payments (cash/check/card/ACH), deposit schedules with due dates and paid flags.
-- **Staffing** — roster with hourly rates, per-event shifts, double-booking conflict detection.
-- **Prints** — BEO, kitchen production sheet (recipe + packing rollups), invoice. Print/PDF via the browser.
-- **Reports** — revenue booked/collected/outstanding, food & labour cost, revenue per guest, revenue by month, top items and clients.
+currently on Phase 1 of "Caterly" is built and running on my machine (lint/typecheck/build clean, seeded with sample data) — dashboard, calendar, leads pipeline, clients, booking wizard, event detail with menu builder + pricing/payments/deposits/staffing/tasks, menu library with recipes & packing lists, BEO / kitchen sheet / invoice prints, and reports. Screenshots attached; you can also click through it live on my desktop.
 
-## Stack
+This project was built with [Lovable](https://lovable.dev).
 
-Next.js (App Router, server components + server actions), TypeScript, Tailwind CSS,
-PostgreSQL, Prisma.
+## Build with Lovable
 
-## Local setup
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/f9a59573-14c2-4b05-bf13-a2381b034fd3).
 
-```bash
-# 1. Postgres
-sudo -u postgres psql -c "CREATE ROLE caterly LOGIN PASSWORD 'caterly';"
-sudo -u postgres psql -c "CREATE DATABASE caterly OWNER caterly;"
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
-# 2. Env
-cp .env.example .env   # then set the password you used above
+## Development
 
-# 3. Install, migrate, seed
-npm install
-npm run db:migrate
-npm run db:seed
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
-# 4. Run
-npm run dev            # http://localhost:3000
+```sh
+git clone <this-repository-url>
+cd <repository-name>
+npm i
+npm run dev
 ```
-
-## Scripts
-
-| Script | Purpose |
-| --- | --- |
-| `npm run dev` | Dev server |
-| `npm run build` | Production build |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run db:migrate` | Prisma migrate dev |
-| `npm run db:seed` | Sample clients, menu, events, leads, staff |
-
-## Not in phase 1
-
-Auth/users & permissions, Stripe payments, client portal, email sending,
-QuickBooks/Xero, Google/Outlook calendar sync, room diagrams, Caterease data import,
-company branding settings (see `COMPANY` in `src/components/PrintSheet.tsx`).
