@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { assertStaffAvailable } from "@/domain/staffing";
 import {
   EventStatus,
   MenuCategory,
@@ -331,19 +332,7 @@ export async function addShift(eventId: string, data: FormData) {
 
   const staffId = optionalText(data, "staffId");
   if (staffId) {
-    const conflict = await db.shift.findFirst({
-      where: {
-        staffId,
-        startAt: { lt: endAt },
-        endAt: { gt: startAt },
-      },
-      include: { event: true },
-    });
-    if (conflict) {
-      throw new Error(
-        `Scheduling conflict: already booked on "${conflict.event.name}"`,
-      );
-    }
+    await assertStaffAvailable({ staffId, startAt, endAt });
   }
 
   await db.shift.create({
