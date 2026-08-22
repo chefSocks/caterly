@@ -13,10 +13,19 @@ export default async function NewEventPage({
   searchParams: Promise<{ clientId?: string; date?: string }>;
 }) {
   const { clientId, date } = await searchParams;
-  const [clients, venues, packages] = await Promise.all([
-    db.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.venue.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.menuPackage.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+  const [defaultClient, packages] = await Promise.all([
+    clientId
+      ? db.client.findUnique({
+          where: { id: clientId },
+          select: { id: true, name: true, contactName: true, email: true },
+        })
+      : Promise.resolve(null),
+    db.menuPackage.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, pricePerGuest: true },
+      take: 100,
+    }),
   ]);
 
   return (
@@ -28,14 +37,23 @@ export default async function NewEventPage({
       <div className="max-w-4xl">
         <BookingWizard
           action={createEvent}
-          clients={clients}
-          venues={venues}
           packages={packages.map((pkg) => ({
             id: pkg.id,
             name: pkg.name,
             pricePerGuest: num(pkg.pricePerGuest),
           }))}
-          defaultClientId={clientId}
+          defaultClient={
+            defaultClient
+              ? {
+                  id: defaultClient.id,
+                  label: defaultClient.name,
+                  description:
+                    [defaultClient.contactName, defaultClient.email]
+                      .filter(Boolean)
+                      .join(" · ") || null,
+                }
+              : null
+          }
           defaultDate={date ?? toDateInput(new Date())}
         />
       </div>
