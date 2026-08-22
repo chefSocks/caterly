@@ -19,6 +19,7 @@ import {
 } from "@/lib/format";
 import { summarize } from "@/lib/event-summary";
 import { statusTone } from "@/lib/status";
+import { measureAsync, measureSync } from "@/lib/performance";
 import { addTask, toggleTask } from "./events/actions";
 
 export const dynamic = "force-dynamic";
@@ -39,37 +40,52 @@ export default async function DashboardPage() {
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
   const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  const [upcoming, monthEvents, openLeads, tasks, unpaid] = await Promise.all([
-    db.event.findMany({
-      where: { startAt: { gte: now, lte: in30Days }, status: { not: "CANCELLED" } },
-      orderBy: { startAt: "asc" },
-      include: { client: true, items: true, payments: true },
-      take: 12,
-    }),
-    db.event.findMany({
-      where: { startAt: { gte: monthStart, lt: monthEnd }, status: { not: "CANCELLED" } },
-      include: { items: true, payments: true },
-    }),
-    db.lead.count({ where: { status: { notIn: ["WON", "LOST"] } } }),
-    db.task.findMany({
-      where: { done: false },
-      orderBy: [{ dueAt: "asc" }],
-      include: { event: true },
-      take: 10,
-    }),
-    db.event.findMany({
-      where: { status: { in: ["DEFINITE", "COMPLETED"] } },
-      include: { client: true, items: true, payments: true },
-    }),
-  ]);
+  const [upcoming, monthEvents, openLeads, tasks, unpaid] = await measureAsync(
+    "dashboard.data",
+    () =>
+      Promise.all([
+        db.event.findMany({
+          where: { startAt: { gte: now, lte: in30Days }, status: { not: "CANCELLED" } },
+          orderBy: { startAt: "asc" },
+          include: { client: true, items: true, payments: true },
+          take: 12,
+        }),
+        db.event.findMany({
+          where: { startAt: { gte: monthStart, lt: monthEnd }, status: { not: "CANCELLED" } },
+          include: { items: true, payments: true },
+        }),
+        db.lead.count({ where: { status: { notIn: ["WON", "LOST"] } } }),
+        db.task.findMany({
+          where: { done: false },
+          orderBy: [{ dueAt: "asc" }],
+          include: { event: true },
+          take: 10,
+        }),
+        db.event.findMany({
+          where: { status: { in: ["DEFINITE", "COMPLETED"] } },
+          include: { client: true, items: true, payments: true },
+        }),
+      ]),
+  );
 
-  const monthBooked = monthEvents.reduce((sum, e) => sum + summarize(e).total, 0);
-  const monthGuests = monthEvents.reduce((sum, e) => sum + e.guestCount, 0);
-  const outstanding = unpaid
-    .map((event) => ({ event, totals: summarize(event) }))
-    .filter(({ totals }) => totals.balance > 0.01)
-    .sort((a, b) => b.totals.balance - a.totals.balance);
-  const outstandingTotal = outstanding.reduce((sum, row) => sum + row.totals.balance, 0);
+  const { monthBooked, monthGuests, outstanding, outstandingTotal } = measureSync(
+    "dashboard.derive",
+    () => {
+      const booked = monthEvents.reduce((sum, event) => sum + summarize(event).total, 0);
+      const guests = monthEvents.reduce((sum, event) => sum + event.guestCount, 0);
+      const balances = unpaid
+        .map((event) => ({ event, totals: summarize(event) }))
+        .filter(({ totals }) => totals.balance > 0.01)
+        .sort((a, b) => b.totals.balance - a.totals.balance);
+
+      return {
+        monthBooked: booked,
+        monthGuests: guests,
+        outstanding: balances,
+        outstandingTotal: balances.reduce((sum, row) => sum + row.totals.balance, 0),
+      };
+    },
+  );
 
   return (
     <>
