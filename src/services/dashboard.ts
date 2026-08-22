@@ -1,3 +1,4 @@
+import { EventStatus } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { measureAsync } from "@/lib/performance";
 
@@ -92,7 +93,7 @@ finals AS (
 )
 `;
 
-export async function getDashboardData(now: Date) {
+export async function getDashboardData(now: Date, visibleStatuses: EventStatus[]) {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
   const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -100,29 +101,31 @@ export async function getDashboardData(now: Date) {
   return measureAsync("dashboard.data", async () => {
     const [upcoming, openLeads, tasks, monthlyRows, outstandingSummaryRows, outstandingRows] =
       await Promise.all([
-        db.event.findMany({
-          where: {
-            startAt: { gte: now, lte: in30Days },
-            status: { not: "CANCELLED" },
-          },
-          orderBy: { startAt: "asc" },
-          take: 12,
-          select: {
-            id: true,
-            name: true,
-            number: true,
-            status: true,
-            startAt: true,
-            guestCount: true,
-            client: { select: { name: true } },
-            items: {
-              select: { quantity: true, unitPrice: true, taxable: true },
-            },
-            serviceChargePct: true,
-            taxPct: true,
-            discount: true,
-          },
-        }),
+        visibleStatuses.length === 0
+          ? Promise.resolve([])
+          : db.event.findMany({
+              where: {
+                startAt: { gte: now, lte: in30Days },
+                status: { in: visibleStatuses },
+              },
+              orderBy: { startAt: "asc" },
+              take: 12,
+              select: {
+                id: true,
+                name: true,
+                number: true,
+                status: true,
+                startAt: true,
+                guestCount: true,
+                client: { select: { name: true } },
+                items: {
+                  select: { quantity: true, unitPrice: true, taxable: true },
+                },
+                serviceChargePct: true,
+                taxPct: true,
+                discount: true,
+              },
+            }),
         db.lead.count({ where: { status: { notIn: ["WON", "LOST"] } } }),
         db.task.findMany({
           where: { done: false },
