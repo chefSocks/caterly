@@ -19,7 +19,11 @@ export const paymentMethodLabel: Record<string, string> = {
 export const leadTone: Record<string, BadgeTone> = {
   NEW: "blue",
   CONTACTED: "amber",
-  PROPOSAL_SENT: "amber",
+  QUALIFIED: "green",
+  PROPOSAL: "blue",
+  PROPOSAL_SENT: "blue",
+  FOLLOW_UP: "amber",
+  DECISION: "amber",
   WON: "green",
   LOST: "red",
 };
