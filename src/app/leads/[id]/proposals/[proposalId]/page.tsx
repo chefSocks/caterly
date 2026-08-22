@@ -16,6 +16,7 @@ import { MenuCategory, ProposalStatus } from "@/generated/prisma/enums";
 import { formatDate, money, titleCase } from "@/lib/format";
 import { num, summarize } from "@/lib/event-summary";
 import { getProposalWorkspace } from "@/services/leads";
+import { convertAcceptedProposalToEvent } from "../../../convert-proposal-action";
 import {
   addCustomProposalItem,
   addProposalItem,
@@ -61,6 +62,11 @@ export default async function ProposalPage({
             {!editable && proposal.status !== ProposalStatus.ACCEPTED && (
               <form action={createProposalRevision.bind(null, proposal.id)}>
                 <Button type="submit">Create revision</Button>
+              </form>
+            )}
+            {proposal.status === ProposalStatus.ACCEPTED && (
+              <form action={convertAcceptedProposalToEvent.bind(null, proposal.id)}>
+                <Button type="submit">Create event</Button>
               </form>
             )}
           </div>
@@ -220,6 +226,17 @@ export default async function ProposalPage({
             {proposal.sentAt && <p className="mt-2 text-xs text-slate-400">Sent {formatDate(proposal.sentAt)}</p>}
             {proposal.acceptedAt && <p className="mt-1 text-xs text-slate-400">Accepted {formatDate(proposal.acceptedAt)}</p>}
           </Card>
+
+          {proposal.status === ProposalStatus.ACCEPTED && (
+            <Card title="Ready to operate">
+              <p className="text-sm text-slate-500">
+                This accepted version can now become the operational Event. Caterly will carry its menu, pricing, guest count, venue, service style, and lead/client context forward.
+              </p>
+              <form action={convertAcceptedProposalToEvent.bind(null, proposal.id)} className="mt-3">
+                <Button type="submit">Create event from accepted proposal</Button>
+              </form>
+            </Card>
+          )}
 
           {proposal.lead.budget && (
             <Card title="Lead budget">
