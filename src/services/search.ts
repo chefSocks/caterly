@@ -6,6 +6,9 @@ export type SearchResult = {
   id: string;
   label: string;
   description?: string | null;
+  category?: string;
+  unit?: string;
+  price?: number;
 };
 
 const LIMIT = 12;
@@ -73,6 +76,9 @@ export async function searchReferenceData(
       id: row.id,
       label: row.name,
       description: `${row.category.toLowerCase().replace(/_/g, " ")} · $${Number(row.price).toFixed(2)} ${row.unit}`,
+      category: row.category,
+      unit: row.unit,
+      price: Number(row.price),
     }));
   }
 
