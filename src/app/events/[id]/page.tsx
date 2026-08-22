@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { AsyncSearchSelect } from "@/components/AsyncSearchSelect";
 import {
   Badge,
   Button,
@@ -53,24 +54,18 @@ export default async function EventPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [event, clients, venues, menuItems, staff] = await Promise.all([
-    db.event.findUnique({
-      where: { id },
-      include: {
-        client: true,
-        venue: true,
-        items: { orderBy: { position: "asc" } },
-        payments: { orderBy: { receivedAt: "desc" } },
-        scheduled: { orderBy: { dueAt: "asc" } },
-        shifts: { orderBy: { startAt: "asc" }, include: { staff: true } },
-        tasks: { orderBy: [{ done: "asc" }, { dueAt: "asc" }] },
-      },
-    }),
-    db.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.venue.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.menuItem.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
-    db.staff.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
-  ]);
+  const event = await db.event.findUnique({
+    where: { id },
+    include: {
+      client: true,
+      venue: true,
+      items: { orderBy: { position: "asc" } },
+      payments: { orderBy: { receivedAt: "desc" } },
+      scheduled: { orderBy: { dueAt: "asc" } },
+      shifts: { orderBy: { startAt: "asc" }, include: { staff: true } },
+      tasks: { orderBy: [{ done: "asc" }, { dueAt: "asc" }] },
+    },
+  });
   if (!event) notFound();
 
   const totals = summarize(event);
@@ -144,11 +139,11 @@ export default async function EventPage({
                 <table className="w-full text-sm">
                   <thead className="text-left text-xs uppercase text-slate-500">
                     <tr>
-                      <th className="py-2 pr-2">Item</th>
-                      <th className="py-2 pr-2 w-20">Qty</th>
-                      <th className="py-2 pr-2 w-24">Price</th>
-                      <th className="py-2 pr-2 w-14">Tax</th>
-                      <th className="py-2 pr-2 w-24 text-right">Total</th>
+                      <th className="w-auto py-2 pr-2">Item</th>
+                      <th className="w-20 py-2 pr-2">Qty</th>
+                      <th className="w-24 py-2 pr-2">Price</th>
+                      <th className="w-14 py-2 pr-2">Tax</th>
+                      <th className="w-24 py-2 pr-2 text-right">Total</th>
                       <th className="py-2" />
                     </tr>
                   </thead>
@@ -226,13 +221,6 @@ export default async function EventPage({
               <AddMenuLine
                 action={addEventItem.bind(null, event.id)}
                 guestCount={event.guestCount}
-                menuItems={menuItems.map((item) => ({
-                  id: item.id,
-                  name: item.name,
-                  category: item.category,
-                  price: num(item.price),
-                  unit: item.unit,
-                }))}
               />
             </div>
           </Card>
@@ -243,14 +231,23 @@ export default async function EventPage({
                 <Field label="Event name" className="sm:col-span-2">
                   <Input name="name" defaultValue={event.name} required />
                 </Field>
-                <Field label="Client">
-                  <Select name="clientId" defaultValue={event.clientId}>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.name}
-                      </option>
-                    ))}
-                  </Select>
+                <Field
+                  label="Client"
+                  hint="Type to search instead of loading the full client database."
+                >
+                  <AsyncSearchSelect
+                    name="clientId"
+                    endpoint="/api/search?type=clients"
+                    placeholder="Search client…"
+                    defaultOption={{
+                      id: event.client.id,
+                      label: event.client.name,
+                      description:
+                        [event.client.contactName, event.client.email]
+                          .filter(Boolean)
+                          .join(" · ") || null,
+                    }}
+                  />
                 </Field>
                 <Field label="Status">
                   <Select name="status" defaultValue={event.status}>
@@ -281,15 +278,21 @@ export default async function EventPage({
                     defaultValue={event.guestCount}
                   />
                 </Field>
-                <Field label="Venue">
-                  <Select name="venueId" defaultValue={event.venueId ?? ""}>
-                    <option value="">— Off-site —</option>
-                    {venues.map((venue) => (
-                      <option key={venue.id} value={venue.id}>
-                        {venue.name}
-                      </option>
-                    ))}
-                  </Select>
+                <Field label="Venue" hint="Clear the field for an off-site event.">
+                  <AsyncSearchSelect
+                    name="venueId"
+                    endpoint="/api/search?type=venues"
+                    placeholder="Search venue…"
+                    defaultOption={
+                      event.venue
+                        ? {
+                            id: event.venue.id,
+                            label: event.venue.name,
+                            description: event.venue.address,
+                          }
+                        : null
+                    }
+                  />
                 </Field>
                 <Field label="Room / area">
                   <Input name="room" defaultValue={event.room ?? ""} />
@@ -483,15 +486,15 @@ export default async function EventPage({
               <Field label="Position">
                 <Input name="position" placeholder="Server" />
               </Field>
-              <Field label="Assign staff">
-                <Select name="staffId" defaultValue="">
-                  <option value="">— Unassigned —</option>
-                  {staff.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name}
-                    </option>
-                  ))}
-                </Select>
+              <Field
+                label="Assign staff"
+                hint="Leave blank to create an unassigned shift."
+              >
+                <AsyncSearchSelect
+                  name="staffId"
+                  endpoint="/api/search?type=staff"
+                  placeholder="Search staff name, role, or email…"
+                />
               </Field>
               <Field label="Start">
                 <Input
