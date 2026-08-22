@@ -25,6 +25,15 @@ enum LeadStatus {
   LOST
 }
 
+enum ProposalStatus {
+  DRAFT
+  READY
+  SENT
+  ACCEPTED
+  REJECTED
+  SUPERSEDED
+}
+
 enum EventStatus {
   PROSPECTIVE
   TENTATIVE
@@ -113,6 +122,7 @@ model Lead {
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
   activities             LeadActivity[]
+  proposals              Proposal[]
 
   @@index([status, createdAt])
   @@index([followUpAt])
@@ -130,6 +140,49 @@ model LeadActivity {
   createdAt DateTime @default(now())
 
   @@index([leadId, createdAt])
+}
+
+model Proposal {
+  id               String         @id @default(cuid())
+  leadId           String
+  lead             Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  version          Int            @default(1)
+  status           ProposalStatus @default(DRAFT)
+  title            String
+  eventDate        DateTime?
+  guestCount       Int            @default(0)
+  serviceType      ServiceType?
+  venueName        String?
+  serviceChargePct Decimal        @default(20) @db.Decimal(5, 2)
+  taxPct           Decimal        @default(13) @db.Decimal(5, 2)
+  discount         Decimal        @default(0) @db.Decimal(10, 2)
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  sentAt           DateTime?
+  acceptedAt       DateTime?
+  items            ProposalItem[]
+
+  @@unique([leadId, version])
+  @@index([leadId, status])
+}
+
+model ProposalItem {
+  id          String       @id @default(cuid())
+  proposalId  String
+  proposal    Proposal     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  menuItemId  String?
+  menuItem    MenuItem?    @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  name        String
+  category    MenuCategory @default(ENTREE)
+  description String?
+  quantity    Decimal      @default(1) @db.Decimal(10, 2)
+  unitPrice   Decimal      @db.Decimal(10, 2)
+  taxable     Boolean      @default(true)
+  position    Int          @default(0)
+
+  @@index([proposalId])
+  @@index([menuItemId])
 }
 
 model Venue {
@@ -158,6 +211,7 @@ model MenuItem {
   packingLines   PackingLine[]
   eventItems     EventItem[]
   packageItems   MenuPackageItem[]
+  proposalItems  ProposalItem[]
 
   @@index([name])
   @@index([category])
@@ -302,14 +356,14 @@ model Shift {
 }
 
 model Task {
-  id       String    @id @default(cuid())
-  eventId  String?
-  event    Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  title    String
-  dueAt    DateTime?
-  done     Boolean   @default(false)
-  assignee String?
-  createdAt DateTime @default(now())
+  id        String    @id @default(cuid())
+  eventId   String?
+  event     Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  title     String
+  dueAt     DateTime?
+  done      Boolean   @default(false)
+  assignee  String?
+  createdAt DateTime  @default(now())
 
   @@index([eventId])
 }
