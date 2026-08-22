@@ -13,6 +13,7 @@ export function AddMenuLine({
 }) {
   const [selected, setSelected] = useState<AsyncSearchOption | null>(null);
   const [custom, setCustom] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
 
   const defaultQuantity =
     selected?.unit === "per person" || !selected ? Math.max(guestCount, 1) : 1;
@@ -22,6 +23,7 @@ export function AddMenuLine({
       action={async (data) => {
         await action(data);
         setSelected(null);
+        setResetKey((current) => current + 1);
       }}
       className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_100px_120px_auto] sm:items-end"
     >
@@ -44,7 +46,7 @@ export function AddMenuLine({
             hint="Type at least 2 characters. Caterly searches the menu instead of loading the entire library."
           >
             <AsyncSearchSelect
-              key={selected?.id ?? "empty"}
+              key={resetKey}
               name="menuItemId"
               endpoint="/api/search?type=menu-items"
               placeholder="Search menu item…"
@@ -77,6 +79,7 @@ export function AddMenuLine({
           onClick={() => {
             setCustom(!custom);
             setSelected(null);
+            setResetKey((current) => current + 1);
           }}
         >
           {custom ? "From menu" : "Custom line"}
