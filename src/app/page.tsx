@@ -1,4 +1,10 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { EventStatus } from "@/generated/prisma/enums";
+import {
+  DashboardEventFilters,
+  type DashboardStatus,
+} from "@/components/DashboardEventFilters";
 import {
   Badge,
   Button,
@@ -23,6 +29,18 @@ import { addTask, toggleTask } from "./events/actions";
 
 export const dynamic = "force-dynamic";
 
+const DASHBOARD_STATUSES: DashboardStatus[] = [
+  "PROSPECTIVE",
+  "TENTATIVE",
+  "DEFINITE",
+  "COMPLETED",
+];
+const DEFAULT_DASHBOARD_STATUSES: DashboardStatus[] = [
+  "PROSPECTIVE",
+  "TENTATIVE",
+  "DEFINITE",
+];
+
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -35,6 +53,16 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint?: stri
 
 export default async function DashboardPage() {
   const now = new Date();
+  const cookieStore = await cookies();
+  const savedStatuses = cookieStore.get("caterly_dashboard_statuses");
+  const visibleStatuses: DashboardStatus[] = savedStatuses
+    ? savedStatuses.value
+        .split(",")
+        .filter((value): value is DashboardStatus =>
+          DASHBOARD_STATUSES.includes(value as DashboardStatus),
+        )
+    : DEFAULT_DASHBOARD_STATUSES;
+
   const {
     upcoming,
     openLeads,
@@ -45,7 +73,7 @@ export default async function DashboardPage() {
     outstandingCount,
     outstandingTotal,
     outstanding,
-  } = await getDashboardData(now);
+  } = await getDashboardData(now, visibleStatuses as EventStatus[]);
 
   return (
     <>
@@ -64,13 +92,21 @@ export default async function DashboardPage() {
         }
       />
 
+      <div className="mb-4">
+        <DashboardEventFilters selected={visibleStatuses} />
+      </div>
+
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi
           label="Booked this month"
           value={money(monthBooked)}
           hint={`${plural(monthEventCount, "event")} · ${monthGuests} guests`}
         />
-        <Kpi label="Events next 30 days" value={String(upcoming.length)} />
+        <Kpi
+          label="Events next 30 days"
+          value={String(upcoming.length)}
+          hint="Based on your dashboard filters"
+        />
         <Kpi label="Open leads" value={String(openLeads)} hint="Needing follow-up" />
         <Kpi
           label="Outstanding balance"
@@ -89,7 +125,7 @@ export default async function DashboardPage() {
           }
         >
           {upcoming.length === 0 ? (
-            <EmptyState>Nothing booked in the next 30 days.</EmptyState>
+            <EmptyState>No upcoming events match your dashboard filters.</EmptyState>
           ) : (
             <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
               {upcoming.map((event) => {
