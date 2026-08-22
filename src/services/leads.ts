@@ -104,6 +104,26 @@ export async function getLeadWorkspace(id: string) {
   );
 }
 
+export async function getProposalWorkspace(leadId: string, proposalId: string) {
+  return measureAsync("leads.proposal", () =>
+    db.proposal.findFirst({
+      where: { id: proposalId, leadId },
+      include: {
+        lead: {
+          select: {
+            id: true,
+            contactName: true,
+            companyName: true,
+            eventType: true,
+            budget: true,
+          },
+        },
+        items: { orderBy: { position: "asc" } },
+      },
+    }),
+  );
+}
+
 export async function getLeadHistory(rawPage: number, query?: string) {
   return measureAsync("leads.history", async () => {
     const q = query?.trim() || undefined;
