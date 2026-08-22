@@ -1,13 +1,10 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
 import { Button, Card, EmptyState, Input, PageHeader } from "@/components/ui";
 import { money } from "@/lib/format";
-import { summarize } from "@/lib/event-summary";
 import { measureAsync } from "@/lib/performance";
+import { CLIENT_PAGE_SIZE, getClientPage } from "@/services/clients";
 
 export const dynamic = "force-dynamic";
-
-const PAGE_SIZE = 50;
 
 function pageHref(q: string | undefined, page: number) {
   const params = new URLSearchParams();
@@ -26,52 +23,13 @@ export default async function ClientsPage({
   const q = rawQuery?.trim() || undefined;
   const requestedPage = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
 
-  const where = q
-    ? {
-        OR: [
-          { name: { contains: q, mode: "insensitive" as const } },
-          { contactName: { contains: q, mode: "insensitive" as const } },
-          { email: { contains: q, mode: "insensitive" as const } },
-        ],
-      }
-    : undefined;
-
-  const totalClients = await measureAsync("clients.count", () => db.client.count({ where }));
-  const totalPages = Math.max(1, Math.ceil(totalClients / PAGE_SIZE));
-  const page = Math.min(requestedPage, totalPages);
-
-  const clients = await measureAsync("clients.page", () =>
-    db.client.findMany({
-      where,
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      select: {
-        id: true,
-        name: true,
-        contactName: true,
-        phone: true,
-        _count: { select: { events: true } },
-        events: {
-          select: {
-            serviceChargePct: true,
-            taxPct: true,
-            discount: true,
-            items: {
-              select: {
-                quantity: true,
-                unitPrice: true,
-                taxable: true,
-              },
-            },
-          },
-        },
-      },
-    }),
+  const { rows: clients, totalClients, totalPages, page } = await measureAsync(
+    "clients.page",
+    () => getClientPage(q, requestedPage),
   );
 
-  const firstShown = totalClients === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const lastShown = Math.min(page * PAGE_SIZE, totalClients);
+  const firstShown = totalClients === 0 ? 0 : (page - 1) * CLIENT_PAGE_SIZE + 1;
+  const lastShown = Math.min(page * CLIENT_PAGE_SIZE, totalClients);
 
   return (
     <>
@@ -112,30 +70,24 @@ export default async function ClientsPage({
                 </tr>
               </thead>
               <tbody>
-                {clients.map((client) => {
-                  const value = client.events.reduce(
-                    (sum, event) => sum + summarize({ ...event, payments: [] }).total,
-                    0,
-                  );
-                  return (
-                    <tr
-                      key={client.id}
-                      className="border-t border-slate-100 dark:border-slate-800"
-                    >
-                      <td className="py-2 pr-4 font-medium">
-                        <Link className="hover:underline" href={`/clients/${client.id}`}>
-                          {client.name}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-4 text-slate-500">
-                        {client.contactName ?? "—"}
-                      </td>
-                      <td className="py-2 pr-4 text-slate-500">{client.phone ?? "—"}</td>
-                      <td className="py-2 pr-4 text-right">{client._count.events}</td>
-                      <td className="py-2 text-right">{money(value)}</td>
-                    </tr>
-                  );
-                })}
+                {clients.map((client) => (
+                  <tr
+                    key={client.id}
+                    className="border-t border-slate-100 dark:border-slate-800"
+                  >
+                    <td className="py-2 pr-4 font-medium">
+                      <Link className="hover:underline" href={`/clients/${client.id}`}>
+                        {client.name}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-4 text-slate-500">
+                      {client.contactName ?? "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-slate-500">{client.phone ?? "—"}</td>
+                    <td className="py-2 pr-4 text-right">{client.eventCount}</td>
+                    <td className="py-2 text-right">{money(client.lifetimeValue)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
