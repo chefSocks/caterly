@@ -12,6 +12,7 @@ export const ACTIVE_LEAD_STAGES = [
 ] as const;
 
 const STAGE_LIMIT = 30;
+const HISTORY_PAGE_SIZE = 50;
 
 export async function getLeadPipeline() {
   return measureAsync("leads.pipeline", async () => {
@@ -83,4 +84,47 @@ export async function getLeadWorkspace(id: string) {
       },
     }),
   );
+}
+
+export async function getLeadHistory(rawPage: number, query?: string) {
+  return measureAsync("leads.history", async () => {
+    const q = query?.trim() || undefined;
+    const where = {
+      status: { in: [LeadStatus.WON, LeadStatus.LOST] },
+      ...(q
+        ? {
+            OR: [
+              { contactName: { contains: q, mode: "insensitive" as const } },
+              { companyName: { contains: q, mode: "insensitive" as const } },
+              { email: { contains: q, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+
+    const count = await db.lead.count({ where });
+    const totalPages = Math.max(1, Math.ceil(count / HISTORY_PAGE_SIZE));
+    const page = Math.min(Math.max(1, rawPage), totalPages);
+    const rows = await db.lead.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      skip: (page - 1) * HISTORY_PAGE_SIZE,
+      take: HISTORY_PAGE_SIZE,
+      select: {
+        id: true,
+        contactName: true,
+        companyName: true,
+        status: true,
+        eventType: true,
+        eventDate: true,
+        guestCount: true,
+        budget: true,
+        source: true,
+        lostReason: true,
+        updatedAt: true,
+      },
+    });
+
+    return { rows, count, page, totalPages, pageSize: HISTORY_PAGE_SIZE };
+  });
 }
