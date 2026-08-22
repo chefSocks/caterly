@@ -13,11 +13,21 @@ export function BookingWizard({
   packages,
   defaultClient,
   defaultDate,
+  defaultEventType = "",
+  defaultServiceType = "BUFFET",
+  defaultGuestCount = 50,
+  defaultVenue,
+  defaultSiteAddress = "",
 }: {
   action: (data: FormData) => Promise<void>;
   packages: (Option & { pricePerGuest: number })[];
   defaultClient?: AsyncSearchOption | null;
   defaultDate: string;
+  defaultEventType?: string;
+  defaultServiceType?: string;
+  defaultGuestCount?: number;
+  defaultVenue?: AsyncSearchOption | null;
+  defaultSiteAddress?: string;
 }) {
   const [step, setStep] = useState(0);
   const [clientId, setClientId] = useState(defaultClient?.id ?? "");
@@ -74,15 +84,9 @@ export function BookingWizard({
                     required
                   />
                 </Field>
-                <Field label="Contact name">
-                  <Input name="newClientContact" />
-                </Field>
-                <Field label="Email">
-                  <Input name="newClientEmail" type="email" />
-                </Field>
-                <Field label="Phone">
-                  <Input name="newClientPhone" />
-                </Field>
+                <Field label="Contact name"><Input name="newClientContact" /></Field>
+                <Field label="Email"><Input name="newClientEmail" type="email" /></Field>
+                <Field label="Phone"><Input name="newClientPhone" /></Field>
               </>
             )}
           </div>
@@ -102,10 +106,10 @@ export function BookingWizard({
               />
             </Field>
             <Field label="Event type">
-              <Input name="eventType" placeholder="Wedding, corporate lunch…" />
+              <Input name="eventType" placeholder="Wedding, corporate lunch…" defaultValue={defaultEventType} />
             </Field>
             <Field label="Service style">
-              <Select name="serviceType" defaultValue="BUFFET">
+              <Select name="serviceType" defaultValue={defaultServiceType}>
                 <option value="DROP_OFF">Drop-off</option>
                 <option value="BUFFET">Buffet</option>
                 <option value="PLATED">Plated</option>
@@ -115,7 +119,7 @@ export function BookingWizard({
               </Select>
             </Field>
             <Field label="Guest count">
-              <Input name="guestCount" type="number" min={0} defaultValue={50} />
+              <Input name="guestCount" type="number" min={0} defaultValue={defaultGuestCount} />
             </Field>
             <Field label="Status">
               <Select name="status" defaultValue="TENTATIVE">
@@ -125,39 +129,23 @@ export function BookingWizard({
               </Select>
             </Field>
             <Field label="Start">
-              <Input
-                name="startAt"
-                type="datetime-local"
-                required
-                defaultValue={`${defaultDate}T17:00`}
-              />
+              <Input name="startAt" type="datetime-local" required defaultValue={`${defaultDate}T17:00`} />
             </Field>
             <Field label="End">
-              <Input
-                name="endAt"
-                type="datetime-local"
-                required
-                defaultValue={`${defaultDate}T22:00`}
-              />
+              <Input name="endAt" type="datetime-local" required defaultValue={`${defaultDate}T22:00`} />
             </Field>
-            <Field label="Staff arrival">
-              <Input name="arrivalAt" type="datetime-local" />
-            </Field>
-            <Field
-              label="Venue"
-              hint="Leave blank for an off-site or client-address event."
-            >
+            <Field label="Staff arrival"><Input name="arrivalAt" type="datetime-local" /></Field>
+            <Field label="Venue" hint="Leave blank for an off-site or client-address event.">
               <AsyncSearchSelect
                 name="venueId"
                 endpoint="/api/search?type=venues"
                 placeholder="Search venue name or address…"
+                defaultOption={defaultVenue}
               />
             </Field>
-            <Field label="Room / area">
-              <Input name="room" />
-            </Field>
+            <Field label="Room / area"><Input name="room" /></Field>
             <Field label="Site address" className="sm:col-span-2">
-              <Input name="siteAddress" />
+              <Input name="siteAddress" defaultValue={defaultSiteAddress} />
             </Field>
           </div>
         </Card>
@@ -166,57 +154,29 @@ export function BookingWizard({
       <div className={step === 2 ? "block" : "hidden"}>
         <Card title="Menu & terms">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Start from a package"
-              hint="Adds a priced package line for every guest. You can refine the menu after booking."
-              className="sm:col-span-2"
-            >
+            <Field label="Start from a package" hint="Adds a priced package line for every guest. You can refine the menu after booking." className="sm:col-span-2">
               <Select name="packageId" defaultValue="">
                 <option value="">— Build the menu manually —</option>
                 {packages.map((pkg) => (
-                  <option key={pkg.id} value={pkg.id}>
-                    {pkg.name} · ${pkg.pricePerGuest.toFixed(2)}/guest
-                  </option>
+                  <option key={pkg.id} value={pkg.id}>{pkg.name} · ${pkg.pricePerGuest.toFixed(2)}/guest</option>
                 ))}
               </Select>
             </Field>
-            <Field label="Service charge %">
-              <Input name="serviceChargePct" type="number" step="0.5" defaultValue={20} />
-            </Field>
-            <Field label="Tax %">
-              <Input name="taxPct" type="number" step="0.5" defaultValue={13} />
-            </Field>
-            <Field label="Client notes" className="sm:col-span-2">
-              <Textarea name="clientNotes" />
-            </Field>
-            <Field label="Kitchen notes" className="sm:col-span-2">
-              <Textarea name="kitchenNotes" />
-            </Field>
-            <Field label="Staff notes" className="sm:col-span-2">
-              <Textarea name="staffNotes" />
-            </Field>
+            <Field label="Service charge %"><Input name="serviceChargePct" type="number" step="0.5" defaultValue={20} /></Field>
+            <Field label="Tax %"><Input name="taxPct" type="number" step="0.5" defaultValue={13} /></Field>
+            <Field label="Client notes" className="sm:col-span-2"><Textarea name="clientNotes" /></Field>
+            <Field label="Kitchen notes" className="sm:col-span-2"><Textarea name="kitchenNotes" /></Field>
+            <Field label="Staff notes" className="sm:col-span-2"><Textarea name="staffNotes" /></Field>
           </div>
         </Card>
       </div>
 
       <div className="flex items-center gap-2">
-        {step > 0 && (
-          <Button type="button" variant="secondary" onClick={() => setStep(step - 1)}>
-            Back
-          </Button>
-        )}
+        {step > 0 && <Button type="button" variant="secondary" onClick={() => setStep(step - 1)}>Back</Button>}
         {step < steps.length - 1 ? (
-          <Button
-            type="button"
-            onClick={() => setStep(step + 1)}
-            disabled={step === 0 ? !clientStepValid : !detailsValid}
-          >
-            Continue
-          </Button>
+          <Button type="button" onClick={() => setStep(step + 1)} disabled={step === 0 ? !clientStepValid : !detailsValid}>Continue</Button>
         ) : (
-          <Button type="submit" disabled={!clientStepValid || !detailsValid}>
-            Book event
-          </Button>
+          <Button type="submit" disabled={!clientStepValid || !detailsValid}>Book event</Button>
         )}
       </div>
     </form>
