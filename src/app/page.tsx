@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
 import {
   Badge,
   Button,
@@ -19,7 +18,7 @@ import {
 } from "@/lib/format";
 import { summarize } from "@/lib/event-summary";
 import { statusTone } from "@/lib/status";
-import { measureAsync, measureSync } from "@/lib/performance";
+import { getDashboardData } from "@/services/dashboard";
 import { addTask, toggleTask } from "./events/actions";
 
 export const dynamic = "force-dynamic";
@@ -36,56 +35,17 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint?: stri
 
 export default async function DashboardPage() {
   const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-  const [upcoming, monthEvents, openLeads, tasks, unpaid] = await measureAsync(
-    "dashboard.data",
-    () =>
-      Promise.all([
-        db.event.findMany({
-          where: { startAt: { gte: now, lte: in30Days }, status: { not: "CANCELLED" } },
-          orderBy: { startAt: "asc" },
-          include: { client: true, items: true, payments: true },
-          take: 12,
-        }),
-        db.event.findMany({
-          where: { startAt: { gte: monthStart, lt: monthEnd }, status: { not: "CANCELLED" } },
-          include: { items: true, payments: true },
-        }),
-        db.lead.count({ where: { status: { notIn: ["WON", "LOST"] } } }),
-        db.task.findMany({
-          where: { done: false },
-          orderBy: [{ dueAt: "asc" }],
-          include: { event: true },
-          take: 10,
-        }),
-        db.event.findMany({
-          where: { status: { in: ["DEFINITE", "COMPLETED"] } },
-          include: { client: true, items: true, payments: true },
-        }),
-      ]),
-  );
-
-  const { monthBooked, monthGuests, outstanding, outstandingTotal } = measureSync(
-    "dashboard.derive",
-    () => {
-      const booked = monthEvents.reduce((sum, event) => sum + summarize(event).total, 0);
-      const guests = monthEvents.reduce((sum, event) => sum + event.guestCount, 0);
-      const balances = unpaid
-        .map((event) => ({ event, totals: summarize(event) }))
-        .filter(({ totals }) => totals.balance > 0.01)
-        .sort((a, b) => b.totals.balance - a.totals.balance);
-
-      return {
-        monthBooked: booked,
-        monthGuests: guests,
-        outstanding: balances,
-        outstandingTotal: balances.reduce((sum, row) => sum + row.totals.balance, 0),
-      };
-    },
-  );
+  const {
+    upcoming,
+    openLeads,
+    tasks,
+    monthEventCount,
+    monthGuests,
+    monthBooked,
+    outstandingCount,
+    outstandingTotal,
+    outstanding,
+  } = await getDashboardData(now);
 
   return (
     <>
@@ -108,14 +68,14 @@ export default async function DashboardPage() {
         <Kpi
           label="Booked this month"
           value={money(monthBooked)}
-          hint={`${plural(monthEvents.length, "event")} · ${monthGuests} guests`}
+          hint={`${plural(monthEventCount, "event")} · ${monthGuests} guests`}
         />
         <Kpi label="Events next 30 days" value={String(upcoming.length)} />
         <Kpi label="Open leads" value={String(openLeads)} hint="Needing follow-up" />
         <Kpi
           label="Outstanding balance"
           value={money(outstandingTotal)}
-          hint={`${plural(outstanding.length, "event")} with a balance`}
+          hint={`${plural(outstandingCount, "event")} with a balance`}
         />
       </div>
 
@@ -201,13 +161,13 @@ export default async function DashboardPage() {
               <EmptyState>Everything is paid up.</EmptyState>
             ) : (
               <ul className="space-y-2 text-sm">
-                {outstanding.slice(0, 8).map(({ event, totals }) => (
-                  <li key={event.id} className="flex justify-between gap-3">
-                    <Link className="truncate hover:underline" href={`/events/${event.id}`}>
-                      {event.client.name} · {event.name}
+                {outstanding.map((row) => (
+                  <li key={row.id} className="flex justify-between gap-3">
+                    <Link className="truncate hover:underline" href={`/events/${row.id}`}>
+                      {row.clientName} · {row.eventName}
                     </Link>
                     <span className="shrink-0 tabular-nums text-amber-600">
-                      {money(totals.balance)}
+                      {money(row.balance)}
                     </span>
                   </li>
                 ))}
