@@ -7,6 +7,9 @@ export type AsyncSearchOption = {
   id: string;
   label: string;
   description?: string | null;
+  category?: string;
+  unit?: string;
+  price?: number;
 };
 
 export function AsyncSearchSelect({
