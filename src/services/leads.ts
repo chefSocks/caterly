@@ -81,6 +81,24 @@ export async function getLeadWorkspace(id: string) {
           orderBy: { createdAt: "desc" },
           take: 50,
         },
+        proposals: {
+          orderBy: { version: "desc" },
+          select: {
+            id: true,
+            version: true,
+            title: true,
+            status: true,
+            createdAt: true,
+            sentAt: true,
+            acceptedAt: true,
+            serviceChargePct: true,
+            taxPct: true,
+            discount: true,
+            items: {
+              select: { quantity: true, unitPrice: true, taxable: true },
+            },
+          },
+        },
       },
     }),
   );
