@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AsyncSearchSelect, type AsyncSearchOption } from "@/components/AsyncSearchSelect";
 import { Button, Card, Field, Input, Select, Textarea, cn } from "@/components/ui";
 
 type Option = { id: string; name: string };
@@ -9,21 +10,17 @@ const steps = ["Client", "Event details", "Menu & terms"] as const;
 
 export function BookingWizard({
   action,
-  clients,
-  venues,
   packages,
-  defaultClientId,
+  defaultClient,
   defaultDate,
 }: {
   action: (data: FormData) => Promise<void>;
-  clients: Option[];
-  venues: Option[];
   packages: (Option & { pricePerGuest: number })[];
-  defaultClientId?: string;
+  defaultClient?: AsyncSearchOption | null;
   defaultDate: string;
 }) {
   const [step, setStep] = useState(0);
-  const [clientId, setClientId] = useState(defaultClientId ?? "");
+  const [clientId, setClientId] = useState(defaultClient?.id ?? "");
   const [newClientName, setNewClientName] = useState("");
   const [name, setName] = useState("");
 
@@ -54,23 +51,22 @@ export function BookingWizard({
       <div className={step === 0 ? "block" : "hidden"}>
         <Card title="Who is this event for?">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Existing client" className="sm:col-span-2">
-              <Select
+            <Field
+              label="Existing client"
+              hint="Type at least 2 characters. Caterly searches instead of loading the full client database."
+              className="sm:col-span-2"
+            >
+              <AsyncSearchSelect
                 name="clientId"
-                value={clientId}
-                onChange={(event) => setClientId(event.target.value)}
-              >
-                <option value="">— New client —</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </Select>
+                endpoint="/api/search?type=clients"
+                placeholder="Search client name, contact, or email…"
+                defaultOption={defaultClient}
+                onChange={(option) => setClientId(option?.id ?? "")}
+              />
             </Field>
             {clientId === "" && (
               <>
-                <Field label="New client name">
+                <Field label="Or create a new client">
                   <Input
                     name="newClientName"
                     value={newClientName}
@@ -147,15 +143,15 @@ export function BookingWizard({
             <Field label="Staff arrival">
               <Input name="arrivalAt" type="datetime-local" />
             </Field>
-            <Field label="Venue">
-              <Select name="venueId" defaultValue="">
-                <option value="">— Off-site / client address —</option>
-                {venues.map((venue) => (
-                  <option key={venue.id} value={venue.id}>
-                    {venue.name}
-                  </option>
-                ))}
-              </Select>
+            <Field
+              label="Venue"
+              hint="Leave blank for an off-site or client-address event."
+            >
+              <AsyncSearchSelect
+                name="venueId"
+                endpoint="/api/search?type=venues"
+                placeholder="Search venue name or address…"
+              />
             </Field>
             <Field label="Room / area">
               <Input name="room" />
