@@ -20,7 +20,7 @@ import {
   titleCase,
   toDateTimeInput,
 } from "@/lib/format";
-import { num } from "@/lib/event-summary";
+import { num, summarize } from "@/lib/event-summary";
 import { leadTone } from "@/lib/status";
 import { getLeadWorkspace } from "@/services/leads";
 import {
@@ -30,6 +30,7 @@ import {
   setLeadStatus,
   updateLead,
 } from "../actions";
+import { createProposal } from "../proposal-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -215,14 +216,40 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             </form>
           </Card>
 
-          <Card title="Proposal">
-            <p className="text-sm text-slate-500">
-              Proposal templates, one-click draft creation, versions, and acceptance will live here.
-              The lead data captured above is already structured to flow directly into that proposal.
-            </p>
-            <Button className="mt-3" type="button" disabled title="Proposal domain is the next Leads Core slice">
-              Create proposal
-            </Button>
+          <Card
+            title="Proposals"
+            action={
+              lead.status !== LeadStatus.WON && lead.status !== LeadStatus.LOST ? (
+                <form action={createProposal.bind(null, lead.id)}>
+                  <Button type="submit">Create proposal</Button>
+                </form>
+              ) : null
+            }
+          >
+            {lead.proposals.length === 0 ? (
+              <EmptyState>No proposal yet. Create a draft from the information already captured on this lead.</EmptyState>
+            ) : (
+              <div className="space-y-2">
+                {lead.proposals.map((proposal) => {
+                  const totals = summarize({ ...proposal, payments: [] });
+                  return (
+                    <Link
+                      key={proposal.id}
+                      href={`/leads/${lead.id}/proposals/${proposal.id}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 text-sm hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
+                    >
+                      <div>
+                        <p className="font-medium">V{proposal.version} · {proposal.title}</p>
+                        <p className="text-xs text-slate-400">
+                          {titleCase(proposal.status)} · created {formatDate(proposal.createdAt)}
+                        </p>
+                      </div>
+                      <span className="font-medium tabular-nums">{money(totals.total)}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         </div>
 
