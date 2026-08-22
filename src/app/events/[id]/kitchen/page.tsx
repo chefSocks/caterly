@@ -2,19 +2,10 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDate, formatTime, titleCase } from "@/lib/format";
 import { num } from "@/lib/event-summary";
+import { buildProductionRollups } from "@/domain/production";
 import { InfoGrid, PrintSheet } from "@/components/PrintSheet";
 
 export const dynamic = "force-dynamic";
-
-type Rollup = Map<string, { quantity: number; unit: string }>;
-
-function add(rollup: Rollup, key: string, quantity: number, unit: string) {
-  const existing = rollup.get(`${key}|${unit}`);
-  rollup.set(`${key}|${unit}`, {
-    quantity: (existing?.quantity ?? 0) + quantity,
-    unit,
-  });
-}
 
 export default async function KitchenSheetPage({
   params,
@@ -37,23 +28,7 @@ export default async function KitchenSheetPage({
   });
   if (!event) notFound();
 
-  const ingredients: Rollup = new Map();
-  const equipment: Rollup = new Map();
-
-  for (const item of event.items) {
-    const quantity = num(item.quantity);
-    for (const line of item.menuItem?.recipeLines ?? []) {
-      add(ingredients, line.ingredient, num(line.quantity) * quantity, line.unit);
-    }
-    for (const line of item.menuItem?.packingLines ?? []) {
-      add(equipment, line.equipment, num(line.quantity) * quantity, line.unit);
-    }
-  }
-
-  const rows = (rollup: Rollup) =>
-    [...rollup.entries()]
-      .map(([key, value]) => ({ name: key.split("|")[0], ...value }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+  const { ingredients, equipment } = buildProductionRollups(event.items);
 
   return (
     <PrintSheet
@@ -103,13 +78,13 @@ export default async function KitchenSheetPage({
           <h3 className="mb-2 border-b border-slate-300 pb-1 text-sm font-semibold uppercase">
             Shopping / prep list
           </h3>
-          {ingredients.size === 0 ? (
+          {ingredients.length === 0 ? (
             <p className="text-sm text-slate-500">
               No recipes attached to these menu items yet.
             </p>
           ) : (
             <ul className="text-sm">
-              {rows(ingredients).map((row) => (
+              {ingredients.map((row) => (
                 <li key={`${row.name}${row.unit}`} className="flex justify-between py-0.5">
                   <span>{row.name}</span>
                   <span className="tabular-nums">
@@ -125,13 +100,13 @@ export default async function KitchenSheetPage({
           <h3 className="mb-2 border-b border-slate-300 pb-1 text-sm font-semibold uppercase">
             Packing list
           </h3>
-          {equipment.size === 0 ? (
+          {equipment.length === 0 ? (
             <p className="text-sm text-slate-500">
               No equipment attached to these menu items yet.
             </p>
           ) : (
             <ul className="text-sm">
-              {rows(equipment).map((row) => (
+              {equipment.map((row) => (
                 <li key={`${row.name}${row.unit}`} className="flex justify-between py-0.5">
                   <span>☐ {row.name}</span>
                   <span className="tabular-nums">
