@@ -1,49 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Button, Field, Input, Select } from "@/components/ui";
-
-export type MenuOption = {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  unit: string;
-};
+import { useState } from "react";
+import { AsyncSearchSelect, type AsyncSearchOption } from "@/components/AsyncSearchSelect";
+import { Button, Field, Input } from "@/components/ui";
 
 export function AddMenuLine({
   action,
-  menuItems,
   guestCount,
 }: {
   action: (data: FormData) => Promise<void>;
-  menuItems: MenuOption[];
   guestCount: number;
 }) {
-  const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState("");
+  const [selected, setSelected] = useState<AsyncSearchOption | null>(null);
   const [custom, setCustom] = useState(false);
 
-  const matches = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const filtered = needle
-      ? menuItems.filter(
-          (item) =>
-            item.name.toLowerCase().includes(needle) ||
-            item.category.toLowerCase().includes(needle),
-        )
-      : menuItems;
-    return filtered.slice(0, 50);
-  }, [menuItems, query]);
-
-  const selected = menuItems.find((item) => item.id === selectedId);
+  const defaultQuantity =
+    selected?.unit === "per person" || !selected ? Math.max(guestCount, 1) : 1;
 
   return (
     <form
       action={async (data) => {
         await action(data);
-        setSelectedId("");
-        setQuery("");
+        setSelected(null);
       }}
       className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_100px_120px_auto] sm:items-end"
     >
@@ -61,47 +39,46 @@ export function AddMenuLine({
         </>
       ) : (
         <>
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-slate-500">Menu item</span>
-            <Input
-              placeholder="Type to search the menu…"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <Select
+          <Field
+            label="Menu item"
+            hint="Type at least 2 characters. Caterly searches the menu instead of loading the entire library."
+          >
+            <AsyncSearchSelect
+              key={selected?.id ?? "empty"}
               name="menuItemId"
-              value={selectedId}
-              onChange={(event) => setSelectedId(event.target.value)}
-              required
-              size={1}
-            >
-              <option value="">— Select an item —</option>
-              {matches.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} · ${item.price.toFixed(2)} {item.unit}
-                </option>
-              ))}
-            </Select>
-          </div>
+              endpoint="/api/search?type=menu-items"
+              placeholder="Search menu item…"
+              onChange={setSelected}
+            />
+          </Field>
           <Field label="Qty">
             <Input
               name="quantity"
               type="number"
               step="0.01"
-              key={selectedId}
-              defaultValue={
-                selected?.unit === "per person" || !selected ? guestCount || 1 : 1
-              }
+              key={`${selected?.id ?? "none"}-${defaultQuantity}`}
+              defaultValue={defaultQuantity}
             />
           </Field>
           <div className="text-sm text-slate-500 sm:pb-2">
-            {selected ? `$${selected.price.toFixed(2)} ${selected.unit}` : ""}
+            {selected?.price != null
+              ? `$${selected.price.toFixed(2)} ${selected.unit ?? ""}`
+              : ""}
           </div>
         </>
       )}
       <div className="flex gap-2">
-        <Button type="submit">Add</Button>
-        <Button type="button" variant="ghost" onClick={() => setCustom(!custom)}>
+        <Button type="submit" disabled={!custom && !selected}>
+          Add
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            setCustom(!custom);
+            setSelected(null);
+          }}
+        >
           {custom ? "From menu" : "Custom line"}
         </Button>
       </div>
